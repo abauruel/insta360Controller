@@ -1,0 +1,20 @@
+node_modules/
+
+# Arduino build cache
+build/
+.arduino15/
+*.elf
+*.bin
+*.map
+*.hex
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# VS Code
+.vscode/
+
+# Arduino IDE temporaries
+/tmp/

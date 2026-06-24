@@ -1,0 +1,16 @@
+{
+  "name": "insta360-x5-controller",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@tech-leads-club/agent-skills": "^1.4.6"
+  }
+}
