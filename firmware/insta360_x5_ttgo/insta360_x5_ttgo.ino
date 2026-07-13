@@ -23,7 +23,7 @@ void setup()
   controller.begin(&buttons, &cameraProtocol, &model);
   ui.begin();
 
-  model.feedback = "Pressione NEXT e SELECT";
+  model.feedback = "NEXT: trocar acao | SELECT: executar";
 }
 
 void loop()

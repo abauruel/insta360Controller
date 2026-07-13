@@ -288,6 +288,7 @@ namespace
       g_model->telemetry.videoRemainingAvailable = true;
       g_model->telemetry.videoRemainingSec = durationSec;
       g_model->cameraMode = CameraMode::VIDEO;
+      g_model->isRecording = false;
       return;
     }
 
@@ -732,7 +733,7 @@ void CameraProtocol::begin(SystemModel *model, const char *remoteIdentifier)
   model_->connectionState = ConnectionState::DISCONNECTED;
   model_->cameraMode = backend_ == Backend::SIMULATED ? CameraMode::VIDEO : CameraMode::UNKNOWN;
   model_->cameraModeLabel = backend_ == Backend::SIMULATED ? "VIDEO" : "";
-  model_->feedback = String("Remote ") + remoteIdentifier_ + " pronto";
+  model_->feedback = "Pronto para conectar";
 
   // No MVP, a telemetria inicia desabilitada e e ativada somente apos conexao.
   model_->telemetrySupported = false;
@@ -740,7 +741,7 @@ void CameraProtocol::begin(SystemModel *model, const char *remoteIdentifier)
 
   if (backend_ == Backend::BLE_STUB)
   {
-    model_->feedback = String("Remote ") + remoteIdentifier_ + " BLE remoto pronto";
+    model_->feedback = "Pronto para conectar";
   }
 }
 
@@ -759,12 +760,12 @@ void CameraProtocol::tick()
       if (elapsed < 700)
       {
         model_->connectionState = ConnectionState::SCANNING;
-        model_->feedback = "Buscando camera...";
+        model_->feedback = "Buscando camera";
       }
       else if (elapsed < 1500)
       {
         model_->connectionState = ConnectionState::PAIRING;
-        model_->feedback = "Pareando...";
+        model_->feedback = "Pareando";
       }
       else
       {
@@ -792,7 +793,7 @@ void CameraProtocol::tick()
       {
         connectInProgress_ = false;
         model_->connectionState = ConnectionState::ERROR;
-        model_->feedback = "Falha init BLE remoto";
+        model_->feedback = "Falha na conexao";
       }
       else if (g_bleDeviceConnected)
       {
@@ -803,7 +804,7 @@ void CameraProtocol::tick()
         model_->isSleeping = false;
         model_->telemetrySupported = false;
         model_->telemetry = Telemetry();
-        model_->feedback = "Camera pareada";
+        model_->feedback = "Conectado";
       }
       else
       {
@@ -811,18 +812,18 @@ void CameraProtocol::tick()
         if (elapsed < 1200)
         {
           model_->connectionState = ConnectionState::SCANNING;
-          model_->feedback = "Advertising BLE...";
+          model_->feedback = "Buscando camera";
         }
         else if (elapsed < CAMERA_BLE_PAIR_TIMEOUT_MS)
         {
           model_->connectionState = ConnectionState::PAIRING;
-          model_->feedback = "Aguardando pareamento da camera";
+          model_->feedback = "Aguardando pareamento";
         }
         else
         {
           connectInProgress_ = false;
           model_->connectionState = ConnectionState::ERROR;
-          model_->feedback = "Timeout pareamento";
+          model_->feedback = "Tempo de pareamento esgotado";
         }
       }
     }
@@ -845,7 +846,7 @@ void CameraProtocol::tick()
     if ((millis() - g_bleLastRxMs) > 6000)
     {
       model_->connectionState = ConnectionState::ERROR;
-      model_->feedback = "Sem RX BLE da camera";
+      model_->feedback = "Sem resposta da camera";
     }
   }
 #endif
@@ -865,7 +866,7 @@ bool CameraProtocol::execute(MenuAction action)
   case MenuAction::CONNECT:
     if (model_->connectionState == ConnectionState::CONNECTED)
     {
-      model_->feedback = "Ja conectado";
+      model_->feedback = "Camera ja conectada";
       return true;
     }
     startConnectFlow();
@@ -874,45 +875,10 @@ bool CameraProtocol::execute(MenuAction action)
   case MenuAction::RECORD_TOGGLE:
     if (model_->connectionState != ConnectionState::CONNECTED || model_->isSleeping)
     {
-      model_->feedback = "Conecte e acorde camera";
+      model_->feedback = "Conecte a camera";
       return false;
     }
     return dispatchCommand(CommandId::RECORD_TOGGLE);
-
-  case MenuAction::CAPTURE_PHOTO:
-    if (model_->connectionState != ConnectionState::CONNECTED || model_->isSleeping)
-    {
-      model_->feedback = "Conecte e acorde camera";
-      return false;
-    }
-    return dispatchCommand(CommandId::CAPTURE_PHOTO);
-
-  case MenuAction::NEXT_MODE:
-    if (model_->connectionState != ConnectionState::CONNECTED || model_->isSleeping)
-    {
-      model_->feedback = "Conecte e acorde camera";
-      return false;
-    }
-    return dispatchCommand(CommandId::NEXT_MODE);
-
-  case MenuAction::SLEEP:
-    if (model_->connectionState != ConnectionState::CONNECTED)
-    {
-      model_->feedback = "Camera desconectada";
-      return false;
-    }
-    return dispatchCommand(CommandId::SLEEP);
-
-  case MenuAction::WAKE:
-    if (model_->connectionState != ConnectionState::CONNECTED)
-    {
-      model_->feedback = "Camera desconectada";
-      return false;
-    }
-    return dispatchCommand(CommandId::WAKE);
-
-  case MenuAction::REFRESH_TELEMETRY:
-    return dispatchCommand(CommandId::REFRESH_TELEMETRY);
 
   case MenuAction::COUNT:
     return false;
@@ -930,31 +896,11 @@ void CameraProtocol::startConnectFlow()
   connectInProgress_ = true;
   connectStartMs_ = millis();
   model_->connectionState = ConnectionState::SCANNING;
-  model_->feedback = "Iniciando conexao";
+  model_->feedback = "Conectando";
 
   if (backend_ == Backend::BLE_STUB)
   {
     bleEnsureConnected();
-  }
-}
-
-void CameraProtocol::cycleMode()
-{
-  if (!model_)
-  {
-    return;
-  }
-  switch (model_->cameraMode)
-  {
-  case CameraMode::VIDEO:
-    model_->cameraMode = CameraMode::PHOTO;
-    break;
-  case CameraMode::PHOTO:
-    model_->cameraMode = CameraMode::TIMELAPSE;
-    break;
-  case CameraMode::TIMELAPSE:
-    model_->cameraMode = CameraMode::VIDEO;
-    break;
   }
 }
 
@@ -1014,41 +960,6 @@ bool CameraProtocol::dispatchSimulated(CommandId command)
     model_->isRecording = !model_->isRecording;
     model_->feedback = model_->isRecording ? "Gravacao iniciada" : "Gravacao parada";
     return true;
-
-  case CommandId::CAPTURE_PHOTO:
-    if (model_->telemetry.photosRemainingAvailable && model_->telemetry.photosRemaining > 0)
-    {
-      model_->telemetry.photosRemaining -= 1;
-    }
-    model_->feedback = "Foto capturada";
-    return true;
-
-  case CommandId::NEXT_MODE:
-    cycleMode();
-    model_->cameraModeLabel = modeToText(model_->cameraMode);
-    model_->feedback = String("Modo: ") + modeToText(model_->cameraMode);
-    return true;
-
-  case CommandId::SLEEP:
-    model_->isSleeping = true;
-    model_->isRecording = false;
-    model_->feedback = "Camera em sleep";
-    return true;
-
-  case CommandId::WAKE:
-    model_->isSleeping = false;
-    model_->feedback = "Camera acordada";
-    return true;
-
-  case CommandId::REFRESH_TELEMETRY:
-    if (!model_->telemetrySupported)
-    {
-      model_->feedback = "Telemetria indisponivel";
-      return false;
-    }
-    updateMockTelemetry();
-    model_->feedback = "Telemetria atualizada";
-    return true;
   }
 
   return false;
@@ -1058,17 +969,17 @@ bool CameraProtocol::dispatchBleStub(CommandId command)
 {
 #if CAMERA_PROTOCOL_BACKEND != 1
   (void)command;
-  model_->feedback = "BLE backend desativado";
+  model_->feedback = "Conexao BLE indisponivel";
   return false;
 #else
   if (!bleEnsureConnected())
   {
-    model_->feedback = "BLE remoto indisponivel";
+    model_->feedback = "Conexao BLE indisponivel";
     return false;
   }
   if (!g_bleDeviceConnected)
   {
-    model_->feedback = "Aguardando camera conectar";
+    model_->feedback = "Conecte a camera primeiro";
     return false;
   }
 
@@ -1084,29 +995,6 @@ bool CameraProtocol::dispatchBleStub(CommandId command)
     payloadLen = sizeof(SHUTTER_CMD);
     label = "SHUTTER";
     break;
-  case CommandId::CAPTURE_PHOTO:
-    payload = SHUTTER_CMD;
-    payloadLen = sizeof(SHUTTER_CMD);
-    label = "SHUTTER/PHOTO";
-    break;
-  case CommandId::NEXT_MODE:
-    payload = MODE_CMD;
-    payloadLen = sizeof(MODE_CMD);
-    label = "MODE";
-    break;
-  case CommandId::SLEEP:
-    payload = POWER_OFF_CMD;
-    payloadLen = sizeof(POWER_OFF_CMD);
-    label = "SLEEP";
-    break;
-  case CommandId::WAKE:
-    payload = TOGGLE_SCREEN_CMD;
-    payloadLen = sizeof(TOGGLE_SCREEN_CMD);
-    label = "WAKE";
-    break;
-  case CommandId::REFRESH_TELEMETRY:
-    model_->feedback = "Telemetria BLE nao implementada";
-    return false;
   }
 
   model_->connectionState = ConnectionState::PAIRING;
@@ -1114,7 +1002,7 @@ bool CameraProtocol::dispatchBleStub(CommandId command)
   model_->connectionState = ConnectionState::CONNECTED;
   if (!ack)
   {
-    model_->feedback = String("BLE sem ACK: ") + label;
+    model_->feedback = "Falha ao enviar comando";
     return false;
   }
 
@@ -1122,36 +1010,8 @@ bool CameraProtocol::dispatchBleStub(CommandId command)
   {
     model_->isRecording = !model_->isRecording;
   }
-  else if (command == CommandId::CAPTURE_PHOTO)
-  {
-    if (model_->telemetry.photosRemainingAvailable && model_->telemetry.photosRemaining > 0)
-    {
-      model_->telemetry.photosRemaining -= 1;
-    }
-  }
-  else if (command == CommandId::NEXT_MODE)
-  {
-    model_->cameraMode = CameraMode::UNKNOWN;
-    model_->cameraModeLabel = "";
-  }
-  else if (command == CommandId::SLEEP)
-  {
-    model_->isSleeping = true;
-    model_->isRecording = false;
-  }
-  else if (command == CommandId::WAKE)
-  {
-    model_->isSleeping = false;
-  }
 
-  if (command == CommandId::NEXT_MODE)
-  {
-    model_->feedback = "BLE TX: MODE (aguardando sync da camera)";
-  }
-  else
-  {
-    model_->feedback = String("BLE TX: ") + label;
-  }
+  model_->feedback = model_->isRecording ? "Gravacao iniciada" : "Gravacao parada";
   return true;
 #endif
 }

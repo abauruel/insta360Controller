@@ -20,16 +20,10 @@ private:
 
   enum class CommandId : uint8_t
   {
-    RECORD_TOGGLE,
-    CAPTURE_PHOTO,
-    NEXT_MODE,
-    SLEEP,
-    WAKE,
-    REFRESH_TELEMETRY
+    RECORD_TOGGLE
   };
 
   void startConnectFlow();
-  void cycleMode();
   void updateMockTelemetry();
   bool dispatchCommand(CommandId command);
   bool dispatchSimulated(CommandId command);

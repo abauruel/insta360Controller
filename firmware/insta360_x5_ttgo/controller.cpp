@@ -21,7 +21,9 @@ void Controller::tick()
     uint8_t next = static_cast<uint8_t>(selectedAction_);
     next = (next + 1) % static_cast<uint8_t>(MenuAction::COUNT);
     selectedAction_ = static_cast<MenuAction>(next);
-    model_->feedback = String("Selecionado: ") + actionToText(selectedAction_);
+    model_->feedback = selectedAction_ == MenuAction::CONNECT
+                           ? "Acao: Conectar"
+                           : "Acao: Iniciar/Parar";
   }
 
   if (events.selectPressed)

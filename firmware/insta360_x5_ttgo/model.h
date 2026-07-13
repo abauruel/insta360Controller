@@ -23,11 +23,6 @@ enum class MenuAction : uint8_t
 {
   CONNECT,
   RECORD_TOGGLE,
-  CAPTURE_PHOTO,
-  NEXT_MODE,
-  SLEEP,
-  WAKE,
-  REFRESH_TELEMETRY,
   COUNT
 };
 
@@ -97,16 +92,6 @@ inline const char *actionToText(MenuAction action)
     return "CONNECT";
   case MenuAction::RECORD_TOGGLE:
     return "REC TOGGLE";
-  case MenuAction::CAPTURE_PHOTO:
-    return "CAPTURE";
-  case MenuAction::NEXT_MODE:
-    return "NEXT MODE";
-  case MenuAction::SLEEP:
-    return "SLEEP";
-  case MenuAction::WAKE:
-    return "WAKE";
-  case MenuAction::REFRESH_TELEMETRY:
-    return "REFRESH";
   case MenuAction::COUNT:
     return "";
   }
